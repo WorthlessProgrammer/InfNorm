@@ -58,14 +58,11 @@ int infiniNormSeq()
 typedef struct {
 	int n_elements;
 	int row;
-	//int tid;
 	int *result;
-
 } thread_args;
 
 void *thread_compute_row_sum(void* args)
 {
-
 	thread_args *t = (thread_args*) args;
 
 	if (t == NULL) {
