@@ -2,4 +2,4 @@
 
 set -xe
 
-gcc main.c -Wall -Wextra -o main
+clang infnorm.c -Wall -Wextra -fsanitize=thread -O3 -lpthread -o main
