@@ -58,6 +58,7 @@ int infiniNormSeq()
 typedef struct {
 	int n_elements;
 	int row;
+	//int tid;
 	int *result;
 
 } thread_args;
@@ -65,16 +66,18 @@ typedef struct {
 void *thread_compute_row_sum(void* args)
 {
 
-	thread_args* t = (thread_args*) args;
+	thread_args *t = (thread_args*) args;
 
 	if (t == NULL) {
 		exit(69);
 	}
 
+	int r_idx = 0;
 	for (int i = t->row; i < t->row + t->n_elements; i++) {
 		for (int j = 0; j < N; j++) {
-			t->result[i] += A[i][j];
+			t->result[r_idx] += A[i][j];
 		}
+		r_idx += 1;
 	}
 
 	return NULL;
@@ -83,6 +86,7 @@ void *thread_compute_row_sum(void* args)
 int infiniNormThreads()
 {
 	pthread_t threads[NUM_THREADS];
+	thread_args args[NUM_THREADS] = {0};
 	int max = 0;
 
 	int *row_abs_sum = malloc(N * sizeof(int));
@@ -92,16 +96,15 @@ int infiniNormThreads()
 	}
 	memset(row_abs_sum, 0, N*sizeof(int));
 
-	//[16] 16 / 5 3 3 3 3 4
-
+	int elements = N/NUM_THREADS;
 	for (int i = 0; i < NUM_THREADS; i++) {
-		//int row_abs_sum + i*N/NUM_THREADS
-		int fila = i*N/NUM_THREADS;
-		int elements = N/NUM_THREADS;
+		int fila = i*elements;
 		elements += (16%5 && i == NUM_THREADS-1) ? N%NUM_THREADS : 0;
 
-		thread_args t = {elements, fila, row_abs_sum + i*N/NUM_THREADS};
-		pthread_create(&threads[i], NULL, thread_compute_row_sum, (void *)&t);
+		//TODO: Why does t = {elements, fila, row_abs_sum + i*elements};
+		// not work? is it the thread lib or the internals of for()?
+		args[i] = (thread_args) {elements, fila, row_abs_sum + i*elements};
+		pthread_create(&threads[i], NULL, thread_compute_row_sum, (void*) &args[i]);
 	}
 
 	for (int i = 0; i < NUM_THREADS; i++) {
