@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <unistd.h>
+#include <pthread.h>
+
 #define N 16
 int A[N][N] = {0};
 
@@ -24,7 +27,7 @@ void initSqrMatrix()
 	}
 }
 
-int infiniNorm()
+int infiniNormSeq()
 {
 	int *row_abs_sum = malloc(N * sizeof(int));
 	if (row_abs_sum ==  NULL) {
@@ -48,11 +51,77 @@ int infiniNorm()
 	return max;
 }
 
+#ifndef NUM_THREADS
+#define NUM_THREADS 4
+#endif
+
+typedef struct {
+	int n_elements;
+	int row;
+	int *result;
+
+} thread_args;
+
+void *thread_compute_row_sum(void* args)
+{
+
+	thread_args* t = (thread_args*) args;
+
+	if (t == NULL) {
+		exit(69);
+	}
+
+	for (int i = t->row; i < t->row + t->n_elements; i++) {
+		for (int j = 0; j < N; j++) {
+			t->result[i] += A[i][j];
+		}
+	}
+
+	return NULL;
+}
+
+int infiniNormThreads()
+{
+	pthread_t threads[NUM_THREADS];
+	int max = 0;
+
+	int *row_abs_sum = malloc(N * sizeof(int));
+	if (row_abs_sum ==  NULL) {
+		fprintf(stderr, "ERROR: Bad allocation");
+		exit(1);
+	}
+	memset(row_abs_sum, 0, N*sizeof(int));
+
+	//[16] 16 / 5 3 3 3 3 4
+
+	for (int i = 0; i < NUM_THREADS; i++) {
+		//int row_abs_sum + i*N/NUM_THREADS
+		int fila = i*N/NUM_THREADS;
+		int elements = N/NUM_THREADS;
+		elements += (16%5 && i == NUM_THREADS-1) ? N%NUM_THREADS : 0;
+
+		thread_args t = {elements, fila, row_abs_sum + i*N/NUM_THREADS};
+		pthread_create(&threads[i], NULL, thread_compute_row_sum, (void *)&t);
+	}
+
+	for (int i = 0; i < NUM_THREADS; i++) {
+		pthread_join(threads[i], NULL);
+	}
+
+	for (int j = 0; j < N; j++) {
+		if (row_abs_sum[j] > max) max = row_abs_sum[j];
+	}
+
+	free(row_abs_sum);
+	return max;
+}
+
 int main(int argc, char **argv)
 {
 	(void) argc;
 	(void) argv;
 	initSqrMatrix();
-	printf("La infini-norma de la matriu A de mida (%d,%d) és = %d \n", N, N, infiniNorm());
+	//printf("La infini-norma de la matriu A de mida (%d,%d) és = %d \n", N, N, infiniNormSeq());
+	printf("La infini-norma de la matriu A de mida (%d,%d) és = %d \n", N, N, infiniNormThreads());
 	return 0;
 }
